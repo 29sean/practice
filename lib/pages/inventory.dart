@@ -219,19 +219,20 @@ class _InventoryState extends State<Inventory> {
                         }
                       }
                       return DropdownButton(
-                          items: categoryItems,
-                          onChanged: (categoryValue) {
-                            setState(() {
-                              selectedCategory = categoryValue;
-                            });
-                            print(categoryValue);
-                          },
-                          value: selectedCategory,
-                          isExpanded: false,
+                        items: categoryItems,
+                        onChanged: (categoryValue) {
+                          setState(() {
+                            selectedCategory = categoryValue;
+                          });
+                          print(categoryValue);
+                        },
+                        value: selectedCategory,
+                        isExpanded: false,
                       );
                     },
                   ),
                   
+                //Search  
                 Container(
                   width: 400,
                   height: 40,
@@ -248,6 +249,8 @@ class _InventoryState extends State<Inventory> {
                     },
                   ),
                 ),
+
+                //Add Item
                 Container(
                   color: Colors.blue[300],
                   margin: EdgeInsets.only(right: 20),
