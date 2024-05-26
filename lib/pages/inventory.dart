@@ -1,19 +1,13 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, prefer_interpolation_to_compose_strings, empty_catches
-import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:practice/actions/firestoreService.dart';
-import 'package:practice/inventory_page/inventory_category.dart';
-import 'package:snapshot/snapshot.dart';
 
 class Inventory extends StatefulWidget {
   const Inventory({super.key});
@@ -30,45 +24,19 @@ final TextEditingController pcat = TextEditingController();
 final TextEditingController pprice = TextEditingController();
 
 class _InventoryState extends State<Inventory> {
-  // final database = FirebaseDatabase.instance.reference();
-  // late StreamSubscription productstream;
 
-// @override
-// void initState(){
-//   super.initState();
-//   // activateListener();
-// }
+  final FirestoreService firestoreService = FirestoreService();
 
-// CollectionReference ref = FirebaseFirestore.instance.collection('products');
-// final firestore = FirebaseFirestore.instance.collection('products').snapshots();
+  var collection = FirebaseFirestore.instance.collection('products');
+  late List<Map<String, dynamic>> items ;
+  bool isLoaded = false;
 
-final FirestoreService firestoreService = FirestoreService();
-
-var collection = FirebaseFirestore.instance.collection('products');
-late List<Map<String, dynamic>> items ;
-bool isLoaded = false;
-
-// _incrementCounter()async{
-//   List<Map<String, dynamic>> tempList = [];
-//   var data = await collection.get();
-
-//   data.docs.forEach((element) {
-//     tempList.add(element.data());
-//   });
-
-//   setState(() {
-//     items = tempList;
-//     isLoaded = true;
-//   });
-// }
-
-  String name = '$category', search = '', imageURL = '';
+  String selectedCategory = '0';
+  String search = '', imageURL = '';
   bool nameOrCat = true, descTOF = true;
 
   @override
   Widget build(BuildContext context) {
-    // _incrementCounter();
-    // final dailySpecialRef = database.child('/Product');
 
     void action(String? docID){
       showDialog(
@@ -227,6 +195,43 @@ bool isLoaded = false;
                     ],
                   ),
                 ),
+
+                //Category Dropdown
+                StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('category')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      List<DropdownMenuItem> categoryItems = [];
+                      if (!snapshot.hasData) {
+                        CircularProgressIndicator();
+                      }
+                      else {
+                        final categories = snapshot.data?.docs.reversed.toList();
+
+                        categoryItems.add(DropdownMenuItem(
+                            value: '0', child: Text('Select Category')));
+
+                        for (var category in categories!) {
+                          categoryItems.add(DropdownMenuItem(
+                              value: category['categoryName'],
+                              child: Text(category['categoryName'])));
+                        }
+                      }
+                      return DropdownButton(
+                          items: categoryItems,
+                          onChanged: (categoryValue) {
+                            setState(() {
+                              selectedCategory = categoryValue;
+                            });
+                            print(categoryValue);
+                          },
+                          value: selectedCategory,
+                          isExpanded: false,
+                      );
+                    },
+                  ),
+                  
                 Container(
                   width: 400,
                   height: 40,
@@ -429,7 +434,7 @@ bool isLoaded = false;
                           String productImage = data['imageURL'];             
 
                           //DEFAULT DISPLAY
-                          if (name == 'ALL ITEMS' && search.isEmpty) {
+                          if (selectedCategory == '0' && search.isEmpty) {
                             return ListTile(
                               title: Row(
                                 children: [
@@ -459,7 +464,7 @@ bool isLoaded = false;
                           } 
 
                           //DISPLAY SEARCH 
-                          if ((data['name'].toString().startsWith(search) && data['category'].toString().startsWith(category)) || (name == 'ALL ITEMS' && data['name'].toString().startsWith(search) || name == 'ALL ITEMS' && data['category'].toString().startsWith(search))) {
+                          if ((data['name'].toString().startsWith(search) && data['category'].toString().startsWith(selectedCategory)) || (selectedCategory == '0' && data['name'].toString().startsWith(search) || selectedCategory == '0' && data['category'].toString().startsWith(search))) {
                             return ListTile(
                               title: Row(
                                 children: [
@@ -503,46 +508,6 @@ bool isLoaded = false;
                     }
                   },
                 ),
-
-
-
-                // child: isLoaded?ListView.builder(
-                //   itemCount: items.length,
-                //   itemBuilder: (context, index) {
-                //     return Padding(
-                //       padding: EdgeInsets.all(8.0),
-                //       child: ListTile(
-                //         shape: RoundedRectangleBorder(
-                //           side: BorderSide(width: 2),
-                //           borderRadius: BorderRadius.circular(20)
-                //         ),
-                //         leading: CircleAvatar(
-                //           backgroundColor: Color.fromARGB(255, 83, 211, 228),
-                //           child: Icon(Icons.medical_services_rounded),
-                //         ),
-                //         title: Row(
-                //           children: [
-                //             Expanded(child: Text('Product Name : ' + items[index]['name'??'No data'])),
-                //             Expanded(child: Text('Category : ' + items[index]['category'??"No data"])),
-                //             Expanded(child: Text('Price : ' + items[index]['price'].toString())),
-                //             Expanded(child: Text('Quantity : ' + items[index]['quantity'].toString())),
-                //           ],
-                //         ),
-                //         trailing: Wrap(
-                //           spacing: 10,
-                //           children: <Widget>[
-                //             IconButton(onPressed: (){
-                              
-                //             }, icon: Icon(Icons.edit, color: Colors.green)),
-                //             IconButton(onPressed: (){
-
-                //             }, icon: Icon(Icons.delete, color: Colors.red))
-                //           ],
-                //         ),
-                //       ),
-                //     );
-                // })
-                // :Text("")
               ),
             )
           ],
@@ -550,10 +515,4 @@ bool isLoaded = false;
       )
     );
   }
-  // @override
-  // void deactivate(){
-  //   // productstream.cancel();
-  //   super.deactivate();
-  // }
-
 }

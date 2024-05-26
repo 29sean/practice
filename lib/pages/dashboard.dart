@@ -114,7 +114,7 @@ class _DashboardState extends State<Dashboard> {
                       Expanded(
                         child: InkWell(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => InventoryCategory()));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => Inventory()));
                           },
                           child: Container(
                             color: Colors.blue[200],
