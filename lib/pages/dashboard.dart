@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:practice/components/sidebar.dart';
 import 'package:practice/inventory_page/inventory_category.dart';
+import 'package:practice/pages/delivery.dart';
 import 'package:practice/pages/inventory.dart';
 import 'package:practice/pages/pos.dart';
 
@@ -29,6 +30,7 @@ class _DashboardState extends State<Dashboard> {
           child: Column(
             children: [
               Expanded(
+                flex: 2,
                 child: Padding(
                   padding: EdgeInsets.only(top: 30, left: 30, right: 30),
                   child: Container(
@@ -149,6 +151,59 @@ class _DashboardState extends State<Dashboard> {
                                   size: 100,
                                 ),
                                 Text("Point of Sale", style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),)
+                              ],
+                            ),
+                          ),
+                        )
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 4,
+                child: Padding(
+                  padding: EdgeInsets.all(30),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => Delivery()));
+                          },
+                          child: Container(
+                            color: Colors.blue[200],
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.delivery_dining, 
+                                  size: 100,
+                                ),
+                                Text("Delivery", style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),)
+                              ],
+                            ),
+                          ),
+                        )
+                      ),
+                      SizedBox(
+                        width: 30,
+                      ),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            // Navigator.push(context, MaterialPageRoute(builder: (context) => POS()));
+                          },
+                          child: Container(
+                            color: Colors.blue[200],
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.point_of_sale, 
+                                  size: 100,
+                                ),
+                                Text("User Management", style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),)
                               ],
                             ),
                           ),

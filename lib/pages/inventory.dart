@@ -1,13 +1,20 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, prefer_interpolation_to_compose_strings, empty_catches
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, prefer_interpolation_to_compose_strings, empty_catches, unnecessary_null_comparison
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:practice/actions/firestoreService.dart';
+import 'package:practice/pages/delivery.dart';
+// import 'package:practice/pages/inventory_pages/inventory_category.dart';
+import 'package:snapshot/snapshot.dart';
 
 class Inventory extends StatefulWidget {
   const Inventory({super.key});
@@ -16,146 +23,256 @@ class Inventory extends StatefulWidget {
   State<Inventory> createState() => _InventoryState();
 }
 
-TextEditingController searchController = TextEditingController();
+// TextEditingController searchController = TextEditingController();
+// TextEditingController searchAvailable = TextEditingController();
 
 final TextEditingController pname = TextEditingController();
+final TextEditingController pdescription = TextEditingController();
 final TextEditingController pquan = TextEditingController();
+final TextEditingController psellingprice = TextEditingController();
+final TextEditingController punitcost = TextEditingController();
 final TextEditingController pcat = TextEditingController();
-final TextEditingController pprice = TextEditingController();
+final TextEditingController psupplier = TextEditingController();
+final TextEditingController ppricelevel1 = TextEditingController();
+final TextEditingController ppricelevel2 = TextEditingController();
+
 
 class _InventoryState extends State<Inventory> {
+  // final database = FirebaseDatabase.instance.reference();
+  // late StreamSubscription productstream;
 
-  final FirestoreService firestoreService = FirestoreService();
+// @override
+// void initState(){
+//   super.initState();
+//   // activateListener();
+// }
 
-  var collection = FirebaseFirestore.instance.collection('products');
-  late List<Map<String, dynamic>> items ;
-  bool isLoaded = false;
+// CollectionReference ref = FirebaseFirestore.instance.collection('products');
+// final firestore = FirebaseFirestore.instance.collection('products').snapshots();
 
-  String selectedCategory = '0';
-  String search = '', imageURL = '';
+final FirestoreService firestoreService = FirestoreService();
+
+var collection = FirebaseFirestore.instance.collection('products');
+late List<Map<String, dynamic>> items ;
+bool isLoaded = false;
+
+// _incrementCounter()async{
+//   List<Map<String, dynamic>> tempList = [];
+//   var data = await collection.get();
+
+//   data.docs.forEach((element) {
+//     tempList.add(element.data());
+//   });
+
+//   setState(() {
+//     items = tempList;
+//     isLoaded = true;
+//   });
+// }
+
+  String name = 'ALL ITEMS', search = '', searchAv = '', imageURL = '';
   bool nameOrCat = true, descTOF = true;
 
   @override
   Widget build(BuildContext context) {
+    // _incrementCounter();
+    // final dailySpecialRef = database.child('/Product');
 
-    void action(String? docID){
-      showDialog(
-        context: context, 
-        builder: (context) {
-          return Dialog(
-            insetPadding: EdgeInsets.all(50),
-            child: Container(
-              child: Column(
-                // mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.only(top: 50),
-                    width: 400,
-                    alignment: Alignment.center,
-                    child: Text("ADD ITEM"),
-                  ),
-                  Container(
-                    width: 400,
-                    padding: EdgeInsets.only(left: 40, right: 40),
-                    child: TextField(
-                      controller: pname,
-                      decoration: InputDecoration(helperText: "Product Name:")
-                    )
-                  ),
-                  Container(
-                    width: 400,
-                    padding: EdgeInsets.only(left: 40, right: 40),
-                    child: TextField(
-                      controller: pcat,
-                      decoration: InputDecoration(helperText: "Category:")
-                    )
-                  ),
-                  Container(
-                    width: 400,
-                    padding: EdgeInsets.only(left: 40, right: 40),
-                    child: TextField(
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      controller: pprice,
-                      decoration: InputDecoration(helperText: "Price:"),
-                    ),
-                  ),
-                  Container(
-                    width: 400,
-                    padding: EdgeInsets.only(left: 40, right: 40),
-                    child: TextField(
-                      keyboardType: TextInputType.number,
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
-                      controller: pquan,
-                      decoration: InputDecoration(helperText: "Quantity:")
-                    )
-                  ),
-                  IconButton(
-                    onPressed: () async {
-                      ImagePicker imagePicker = ImagePicker();
-                      XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
-
-                      if (file == null) {
-                        return;
-                      }
-
-                      String uniqueName = DateTime.now().millisecondsSinceEpoch.toString();
-
-                      Reference referenceRoot = FirebaseStorage.instance.ref();
-                      Reference referenceDirImages = referenceRoot.child('images');
-
-                      Reference referenceImageToUpload = referenceDirImages.child(uniqueName);
-
-                      try {
-                        await referenceImageToUpload.putFile(File(file!.path));
-                        imageURL = await referenceImageToUpload.getDownloadURL();
-                      } catch (e) {
-                        
-                      }
-                    }, 
-                    icon: Icon(
-                      Icons.camera_alt
-                    )
-                  ),
-                  Container(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (pname.text.isEmpty || pcat.text.isEmpty || pquan.text.isEmpty || pprice.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please fill all the fields!')));
-                          return;
-                        }
-                        
-                        if (imageURL.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please upload image!')));
-                          return;
-                        }
-
-                        if (docID == null) {
-                          firestoreService.addProduct(pname.text.toUpperCase(), pquan.text, pcat.text.toUpperCase(), pprice.text, imageURL);
-                        } else {
-                          firestoreService.updateProduct(docID, pname.text.toUpperCase(), pquan.text, pcat.text.toUpperCase(), pprice.text, imageURL);
-                        }   
-
-                        pname.clear();
-                        pquan.clear();
-                        pcat.clear();
-                        pprice.clear();
-                        Navigator.pop(context);
-                      },
-                      child: Text("SAVE")),
-                  )
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
+    // void action(String? docID){
+    //   showDialog(
+    //     context: context, 
+    //     builder: (context) {
+    //       return Dialog(
+    //         insetPadding: EdgeInsets.all(150),
+    //         child: Container(
+    //           child: Column(
+    //             // mainAxisAlignment: MainAxisAlignment.center,
+    //             children: [                 
+    //               Container(
+    //                 padding: EdgeInsets.only(top: 50),
+    //                 width: 400,
+    //                 alignment: Alignment.center,
+    //                 child: Text("ADD ITEM"),
+    //               ),
+    //               Container(
+    //                 width: 800,
+    //                 child: Row(
+    //                   children: [
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         controller: pname,
+    //                         decoration: InputDecoration(helperText: "Product Name:")
+    //                       )
+    //                     ),
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         controller: pdescription,
+    //                         decoration: InputDecoration(helperText: "Description:")
+    //                       )
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),
+    //               Container(
+    //                 width: 800,
+    //                 child: Row(
+    //                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    //                   children: [
+    //                     Container(
+    //                       width: 250,
+    //                       padding: EdgeInsets.only(left: 30, right: 30),
+    //                       child: TextField(
+    //                         keyboardType: TextInputType.number,
+    //                         inputFormatters: <TextInputFormatter>[
+    //                           FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+    //                           FilteringTextInputFormatter.digitsOnly
+    //                         ],
+    //                         controller: pquan,
+    //                         decoration: InputDecoration(helperText: "Quantity:")
+    //                       )
+    //                     ),
+    //                     Container(
+    //                       width: 250,
+    //                       padding: EdgeInsets.only(left: 30, right: 30),
+    //                       child: TextField(
+    //                         keyboardType: TextInputType.numberWithOptions(decimal: true),
+    //                         inputFormatters: <TextInputFormatter>[
+    //                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+    //                         ],
+    //                         controller: psellingprice,
+    //                         decoration: InputDecoration(helperText: "Selling Price:"),
+    //                       ),
+    //                     ),
+    //                     Container(
+    //                       width: 250,
+    //                       padding: EdgeInsets.only(left: 30, right: 30),
+    //                       child: TextField(
+    //                         keyboardType: TextInputType.numberWithOptions(decimal: true),
+    //                         inputFormatters: <TextInputFormatter>[
+    //                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+    //                         ],
+    //                         controller: punitcost,
+    //                         decoration: InputDecoration(helperText: "Unit Cost:"),
+    //                       ),
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),          
+    //               Container(
+    //                 width: 800,
+    //                 child: Row(
+    //                   children: [
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         controller: pcat,
+    //                         decoration: InputDecoration(helperText: "Category:")
+    //                       )
+    //                     ),
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         controller: psupplier,
+    //                         decoration: InputDecoration(helperText: "Supplier:")
+    //                       )
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),                 
+    //               Container(
+    //                 width: 800,
+    //                 child: Row(
+    //                   children: [
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         keyboardType: TextInputType.numberWithOptions(decimal: true),
+    //                         inputFormatters: <TextInputFormatter>[
+    //                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+    //                         ],
+    //                         controller: ppricelevel1,
+    //                         decoration: InputDecoration(helperText: "Price Level 1:"),
+    //                       ),
+    //                     ),
+    //                     Container(
+    //                       width: 400,
+    //                       padding: EdgeInsets.only(left: 40, right: 40),
+    //                       child: TextField(
+    //                         keyboardType: TextInputType.numberWithOptions(decimal: true),
+    //                         inputFormatters: <TextInputFormatter>[
+    //                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+    //                         ],
+    //                         controller: ppricelevel2,
+    //                         decoration: InputDecoration(helperText: "Price Level 2:"),
+    //                       ),
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),           
+    //               //bago to
+    //               IconButton(
+    //                 onPressed: () async {
+    //                   ImagePicker imagePicker = ImagePicker();
+    //                   XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
+    //                   if (file == null) {
+    //                     return;
+    //                   }
+    //                   String uniqueName = DateTime.now().millisecondsSinceEpoch.toString();
+    //                   Reference referenceRoot = FirebaseStorage.instance.ref();
+    //                   Reference referenceDirImages = referenceRoot.child('images');
+    //                   Reference referenceImageToUpload = referenceDirImages.child(uniqueName);
+    //                   try {
+    //                     final bytes = await file.readAsBytes();
+    //                     await referenceImageToUpload.putData(bytes);
+    //                     String imageURL = await referenceImageToUpload.getDownloadURL();
+    //                     setState(() {
+    //                       this.imageURL = imageURL;
+    //                     });
+    //                   } catch (e) {
+    //                     print(e);
+    //                   }
+    //                 },
+    //                 icon: Icon(Icons.camera_alt),
+    //               ),
+    //               // imageURL != null ? Image.network(imageURL!) : Container(),
+    //               Container(
+    //                 child: ElevatedButton(
+    //                   onPressed: () {
+    //                     if (pname.text.isEmpty || pcat.text.isEmpty || pquan.text.isEmpty || psellingprice.text.isEmpty) {
+    //                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please fill all the fields!')));
+    //                       return;
+    //                     }                    
+    //                     if (imageURL.isEmpty) {
+    //                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please upload image!')));
+    //                       return;
+    //                     }
+    //                     if (docID == null) {
+    //                       // firestoreService.addProduct(pname.text.toUpperCase(), pdescription.text.toUpperCase(), int.parse(pquan.text), double.parse(psellingprice.text), double.parse(punitcost.text), pcat.text.toUpperCase(), psupplier.text.toUpperCase(), int.parse(ppricelevel1.text), int.parse(ppricelevel2.text), imageURL);
+    //                     } else {
+    //                       firestoreService.updateProduct(docID, pname.text.toUpperCase(), pquan.text, pcat.text.toUpperCase(), psellingprice.text, imageURL);
+    //                     }   
+    //                     pname.clear();
+    //                     pquan.clear();
+    //                     pcat.clear();
+    //                     psellingprice.clear();
+    //                     Navigator.pop(context);
+    //                   },
+    //                   child: Text("SAVE")),
+    //               )
+    //             ],
+    //           ),
+    //         ),
+    //       );
+    //     },
+    //   );
+    // }
 
     return Scaffold(
       appBar: AppBar(
@@ -195,44 +312,6 @@ class _InventoryState extends State<Inventory> {
                     ],
                   ),
                 ),
-
-                //Category Dropdown
-                StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('category')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      List<DropdownMenuItem> categoryItems = [];
-                      if (!snapshot.hasData) {
-                        CircularProgressIndicator();
-                      }
-                      else {
-                        final categories = snapshot.data?.docs.reversed.toList();
-
-                        categoryItems.add(DropdownMenuItem(
-                            value: '0', child: Text('Select Category')));
-
-                        for (var category in categories!) {
-                          categoryItems.add(DropdownMenuItem(
-                              value: category['categoryName'],
-                              child: Text(category['categoryName'])));
-                        }
-                      }
-                      return DropdownButton(
-                        items: categoryItems,
-                        onChanged: (categoryValue) {
-                          setState(() {
-                            selectedCategory = categoryValue;
-                          });
-                          print(categoryValue);
-                        },
-                        value: selectedCategory,
-                        isExpanded: false,
-                      );
-                    },
-                  ),
-                  
-                //Search  
                 Container(
                   width: 400,
                   height: 40,
@@ -249,14 +328,285 @@ class _InventoryState extends State<Inventory> {
                     },
                   ),
                 ),
-
-                //Add Item
                 Container(
                   color: Colors.blue[300],
                   margin: EdgeInsets.only(right: 20),
                   child: ElevatedButton(
                     onPressed: () {
-                      action(null);
+                      pname.text = '';
+                      pcat.text = '';
+                      psellingprice.text = '';
+                      pquan.text = '';
+                      punitcost.text = '';
+                      pdescription.text = '';
+                      ppricelevel1.text = '';
+                      ppricelevel2.text = '';
+                      psupplier.text = '';
+                      // action(null);
+                      showDialog(
+                        context: context, builder: (context) => StatefulBuilder(
+                          builder: (context, setState) {
+                            return Dialog(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text("Available Products", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                  Container(
+                                    width: 400,
+                                    height: 40,
+                                    margin: EdgeInsets.only(right: 30),
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                        prefixIcon: Icon(Icons.search),
+                                        hintText: "Search...",
+                                      ),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          searchAv = val.toUpperCase();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  ListTile(
+                                    title: Container(
+                                      margin: EdgeInsets.only(left: 30),
+                                      child: Row(
+                                        children: [
+                                          Expanded(flex: 2, child: Text('Product Name', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(flex: 2, child: Text('Description', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(child: Text('Qty', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(child: Text('Selling Price', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(child: Text('Unit Cost', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(flex: 2, child: Text('Category', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(flex: 2, child: Text('Suppplier', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(child: Text('Price Level 1', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                          Expanded(child: Text('Price Level 2', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                                        ],
+                                      ),
+                                    ),
+                                    trailing: Text('Actions'),
+                                    leading: Text('Image')
+                                  ),
+                                  Expanded(
+                                    flex: 5,
+                                    child: StreamBuilder<QuerySnapshot>(
+                                      stream: firestoreService.getOrderStream(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.hasData) {
+                                          List productList = snapshot.data!.docs;
+                                    
+                                          return ListView.builder(
+                                            itemCount: productList.length,
+                                            itemBuilder: (context, index) {
+                                              DocumentSnapshot document = productList[index];
+                                              String docID = document.id;
+                                    
+                                              Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+                                              if (data != null) {
+                                                // Use type annotations for clarity and safety
+                                                int batchNumber = data['batch number'] as int? ?? 0;
+                                                int barcodeID = data['barcode id'] as int? ?? 0;
+                                                String productName = data['name'] as String? ?? "";
+                                                String description = data['description'] as String? ?? "";
+                                                int productQuantity = data['quantity'] as int? ?? 0;
+                                                String category = data['category'] as String? ?? "";
+                                                String supplier = data['supplier'] as String? ?? "";
+                                                double sellingPrice = (data['selling price'] ?? 0.0) as double;
+                                                double unitCost = (data['unit cost'] ?? 0.0) as double;
+                                                String productImage = data['imageURL'] as String? ?? "";
+                                                int priceLevel1 = data['price level 1'] as int? ?? 0;
+                                                int priceLevel2 = data['price level 2'] as int? ?? 0;
+                                                String img = data['imageURL'];
+                                                Timestamp expirationDateTimestamp = data['expiration date'];
+                                                Timestamp dateReceivedTimestamp = data['date received'];
+
+                                                DateTime dateReceived = dateReceivedTimestamp.toDate();
+                                                DateTime expirationDate = expirationDateTimestamp.toDate();
+                                    
+                                                // Now you can use these variables as needed.
+                                    
+                                                // if (data['status'] == 'STORED') {
+                                                //   return ListTile(
+                                                //     title: Row(
+                                                //       children: [
+                                                //         Expanded(flex: 2, child: Text(productName)),
+                                                //         Expanded(flex: 2, child: Text(description)),
+                                                //         Expanded(child: Text(productQuantity.toString())),
+                                                //         Expanded(child: Text(sellingPrice.toString())),
+                                                //         Expanded(child: Text(unitCost.toString())),
+                                                //         Expanded(flex: 2, child: Text(category)),
+                                                //         Expanded(flex: 2, child: Text(supplier)),
+                                                //         Expanded(child: Text(priceLevel1.toString())),
+                                                //         Expanded(child: Text(priceLevel2.toString())),
+                                                //       ],
+                                                //     ),
+                                                //     trailing: Wrap(
+                                                //       children: <Widget>[
+                                                //         IconButton(onPressed: (){
+                                                //           firestoreService.addToInventory(batchNumber, barcodeID, productName, description, productQuantity, sellingPrice, unitCost, category, supplier, priceLevel1, priceLevel2, img, expirationDate, dateReceived);
+                                                //           firestoreService.updateStatus(docID, 'DISPLAYED');
+                                                //           showDialog(
+                                                //             context: context, 
+                                                //             builder: (context) {
+                                                //               return Dialog(
+                                                //                 child: Padding(
+                                                //                   padding: EdgeInsets.all(10.0),
+                                                //                   child: Column(
+                                                //                     mainAxisSize: MainAxisSize.min,
+                                                //                     children: [
+                                                //                       Container(
+                                                //                         padding: EdgeInsets.all(5),
+                                                //                         child: Text("PRODUCT DISPLAYED!"),
+                                                //                       ),
+                                                //                       Container(
+                                                //                         child: TextButton(onPressed: (){
+                                                //                           Navigator.pop(context);
+                                                //                         }, 
+                                                //                       child: Text("OK")),
+                                                //                       )
+                                                //                     ],
+                                                //                   ),
+                                                //                 ),
+                                                //               );
+                                                //             },
+                                                //           );
+                                                //         }, icon: Icon(Icons.add, color: Colors.black)),
+                                                //       ],
+                                                //     ),
+                                                //     leading: Container(
+                                                //       margin: EdgeInsets.only(right: 20),
+                                                //       width: 50,
+                                                //       height: 50,
+                                                //       child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
+                                                //     ),
+                                                //   );
+                                                // }
+                                                 
+                                                if (data['status'] == 'STORED' && data['name'].toString().startsWith(searchAv)) {
+                                                  return ListTile(
+                                                    title: Row(
+                                                      children: [
+                                                        Expanded(flex: 2, child: Text(productName)),
+                                                        Expanded(flex: 2, child: Text(description)),
+                                                        Expanded(child: Text(productQuantity.toString())),
+                                                        Expanded(child: Text(sellingPrice.toString())),
+                                                        Expanded(child: Text(unitCost.toString())),
+                                                        Expanded(flex: 2, child: Text(category)),
+                                                        Expanded(flex: 2, child: Text(supplier)),
+                                                        Expanded(child: Text(priceLevel1.toString())),
+                                                        Expanded(child: Text(priceLevel2.toString())),
+                                                      ],
+                                                    ),
+                                                    trailing: Wrap(
+                                                      children: <Widget>[
+                                                        IconButton(onPressed: (){
+                                                          firestoreService.addToInventory(batchNumber, barcodeID, productName, description, productQuantity, sellingPrice, unitCost, category, supplier, priceLevel1, priceLevel2, img, expirationDate, dateReceived);
+                                                          firestoreService.updateStatus(docID, 'DISPLAYED');
+                                                          showDialog(
+                                                            context: context, 
+                                                            builder: (context) {
+                                                              return Dialog(
+                                                                child: Padding(
+                                                                  padding: EdgeInsets.all(10.0),
+                                                                  child: Column(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Container(
+                                                                        padding: EdgeInsets.all(5),
+                                                                        child: Text("PRODUCT DISPLAYED!"),
+                                                                      ),
+                                                                      Container(
+                                                                        child: TextButton(onPressed: (){
+                                                                          Navigator.pop(context);
+                                                                        }, 
+                                                                      child: Text("OK")),
+                                                                      )
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            },
+                                                          );
+                                                        }, icon: Icon(Icons.add, color: Colors.black)),
+                                                      ],
+                                                    ),
+                                                    leading: Container(
+                                                      margin: EdgeInsets.only(right: 20),
+                                                      width: 50,
+                                                      height: 50,
+                                                      child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
+                                                    ),
+                                                  );
+                                                }
+                                    
+                                                //DISPLAY SEARCH 
+                                                // if (data['status'] == 'STORED') {
+                                                //   return ListTile(
+                                                //     title: Row(
+                                                //       children: [
+                                                //         Expanded(flex: 5, child: Text(productName)),
+                                                //         Expanded(flex: 5, child: Text(category)),
+                                                //         Expanded(child: Text(sellingPrice.toString())),
+                                                //         Expanded(child: Text(productQuantity.toString())),
+                                                //       ],
+                                                //     ),
+                                                //     trailing: Wrap(
+                                                //       children: <Widget>[
+                                                //         IconButton(onPressed: (){
+                                                //           pname.text = productName;
+                                                //           pcat.text = category;
+                                                //           psellingprice.text = sellingPrice.toString();
+                                                //           pquan.text = productQuantity.toString();
+                                                //           // action(docID);
+                                                //         }, icon: Icon(Icons.edit, color: Colors.green)),
+                                                //         IconButton(onPressed: (){
+                                                //           firestoreService.deleteProduct(docID);
+                                                //         }, icon: Icon(Icons.delete, color: Colors.red))
+                                                //       ],
+                                                //     ),
+                                                //     leading: Container(
+                                                //       margin: EdgeInsets.only(right: 20),
+                                                //       width: 50,
+                                                //       height: 50,
+                                                //       child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
+                                                //     ),
+                                                //   );
+                                                // }
+                                                return Container();
+                                                } else {
+                                                  // Handle case where data is null, depending on your application logic.
+                                                }             
+                                    
+                                                //DEFAULT DISPLAY
+                                                          
+                                            },
+                                          );
+                                        }
+                                        else {
+                                          return Expanded(
+                                            child: Container(
+                                              width: double.infinity,
+                                              alignment: Alignment.center,
+                                              color: Colors.white,
+                                              child: Text('No product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40))
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  )
+          
+                                    
+                                ],
+                              )
+                            ),
+                          );
+                          },
+                          
+                        )
+                      );
                     },
                     child: Text('Add Item'),
                   ),
@@ -267,149 +617,25 @@ class _InventoryState extends State<Inventory> {
               color: Colors.white,
               height: 15,
             ),
-
-            //ROW HEADER
-            Expanded(
-              child: Container(
-                color: Colors.blue,
+            ListTile(
+              title: Container(
+                margin: EdgeInsets.only(left: 30),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 73, 73, 73)
-                          )
-                        ),
-                        child: Center(
-                          child: Text('Image', 
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 15
-                            )
-                          )
-                        )
-                      )
-                    ),
-
-                    //ITEM HEADER
-                    Expanded(
-                      flex: 5,
-                      child: InkWell(
-                        onTap: () {
-                          nameOrCat = true;
-                          setState(() {
-                            if (nameOrCat) {
-                              if (descTOF == false) {
-                                firestoreService.getProductStream(nameOrCat == true, descTOF == false);
-                                descTOF = true;
-                              } else {
-                                firestoreService.getProductStream(nameOrCat == true, descTOF == true);
-                                descTOF = false;
-                              }
-                            }
-                          });
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color.fromARGB(255, 73, 73, 73)
-                            )
-                          ),
-                          child: Center(
-                            child: Text('Product', 
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold, 
-                                fontSize: 15
-                              )
-                            )
-                          )
-                        )
-                      )
-                    ),
-
-                    //CATEGORY HEADER
-                    Expanded(
-                      flex: 5,
-                      child: InkWell(
-                        onTap: () {
-                          nameOrCat = false;
-                          setState(() {
-                            if (nameOrCat == false) {
-                              if (descTOF == false) {
-                                firestoreService.getProductStream(nameOrCat == false, descTOF == false);
-                                descTOF = true;
-                              } else {
-                                firestoreService.getProductStream(nameOrCat == false, descTOF == true);
-                                descTOF = false;
-                              }
-                            }
-                          });
-                        }, 
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color.fromARGB(255, 73, 73, 73)
-                            )
-                          ),
-                          child: Center(
-                            child: Text('Category', 
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 15
-                            )
-                            )
-                          )
-                        )
-                      )
-                    ),
-
-                    //PRICE HEADER
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 73, 73, 73)
-                          )
-                        ),
-                        child: Center(
-                          child: Text('Price', 
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15)
-                          )
-                        )
-                      )
-                    ),
-                    
-                    //QUANTITY HEADER
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 73, 73, 73)
-                          )
-                        ),
-                        child: Center(
-                          child: Text('Quantity', 
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)
-                          )
-                        )
-                      )
-                    ),
-
-                    //ACTION HEADER
-                    Container(
-                      decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-                      width: 140,
-                      // padding: EdgeInsets.only(right: 50),
-                      alignment: Alignment.center,
-                      child: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))
-                    ),
+                    Expanded(flex: 2, child: Text('Product Name', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Description', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Qty', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Selling Price', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Unit Cost', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Category', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Suppplier', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Price Level 1', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('Price Level 2', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
                   ],
                 ),
               ),
+              trailing: Text('Actions'),
+              leading: Text('Image')
             ),
             
             //ITEM DISPLAY CONTAINER
@@ -430,72 +656,100 @@ class _InventoryState extends State<Inventory> {
                           String docID = document.id;
 
                           Map<String, dynamic> data = document.data() as Map<String, dynamic>;
-                          String productName = data['name'];
-                          String productQuantity = data['quantity'];
-                          String productCategory = data['category'];
-                          String productPrice = data['price'];
-                          String productImage = data['imageURL'];             
+                          if (data != null) {
+                            // Use type annotations for clarity and safety
+                            String productName = data['name'] as String? ?? "";
+                            String description = data['description'] as String? ?? "";
+                            int productQuantity = data['quantity'] as int? ?? 0;
+                            String category = data['category'] as String? ?? "";
+                            String supplier = data['supplier'] as String? ?? "";
+                            double sellingPrice = (data['selling price'] ?? 0.0) as double;
+                            double unitCost = (data['unit cost'] ?? 0.0) as double;
+                            String productImage = data['imageURL'] as String? ?? "";
+                            int priceLevel1 = data['price level 1'] as int? ?? 0;
+                            int priceLevel2 = data['price level 2'] as int? ?? 0;
 
-                          //DEFAULT DISPLAY
-                          if (selectedCategory == '0' && search.isEmpty) {
-                            return ListTile(
-                              title: Row(
-                                children: [
-                                  Expanded(flex: 5, child: Text(productName)),
-                                  Expanded(flex: 5, child: Text(productCategory)),
-                                  Expanded(child: Center(child: Container(margin: EdgeInsets.only(right: 10), child: Text(productPrice)))),
-                                  Expanded(child: Center(child: Container(margin: EdgeInsets.only(right: 10), child: Text(productQuantity)))),
-                                ],
-                              ),
-                              trailing: Wrap(
-                                children: <Widget>[
-                                  IconButton(onPressed: (){
-                                    action(docID);
-                                  }, icon: Icon(Icons.edit, color: Colors.green)),
-                                  IconButton(onPressed: (){
-                                    firestoreService.deleteProduct(docID);
-                                  }, icon: Icon(Icons.delete, color: Colors.red))
-                                ],
-                              ),
-                              leading: Container(
-                                margin: EdgeInsets.only(right: 20),
-                                width: 50,
-                                height: 50,
-                                child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
-                              ),
-                            );
-                          } 
+                            // Now you can use these variables as needed.
 
-                          //DISPLAY SEARCH 
-                          if ((data['name'].toString().startsWith(search) && data['category'].toString().startsWith(selectedCategory)) || (selectedCategory == '0' && data['name'].toString().startsWith(search) || selectedCategory == '0' && data['category'].toString().startsWith(search))) {
-                            return ListTile(
-                              title: Row(
-                                children: [
-                                  Expanded(flex: 5, child: Text(productName)),
-                                  Expanded(flex: 5, child: Text(productCategory)),
-                                  Expanded(child: Text(productPrice)),
-                                  Expanded(child: Text(productQuantity)),
-                                ],
-                              ),
-                              trailing: Wrap(
-                                children: <Widget>[
-                                  IconButton(onPressed: (){
-                                    action(docID);
-                                  }, icon: Icon(Icons.edit, color: Colors.green)),
-                                  IconButton(onPressed: (){
-                                    firestoreService.deleteProduct(docID);
-                                  }, icon: Icon(Icons.delete, color: Colors.red))
-                                ],
-                              ),
-                              leading: Container(
-                                margin: EdgeInsets.only(right: 20),
-                                width: 50,
-                                height: 50,
-                                child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
-                              ),
-                            );
-                          }
-                          return Container();           
+                            if (name == 'ALL ITEMS' && search.isEmpty) {
+                              return ListTile(
+                                title: Row(
+                                  children: [
+                                    Expanded(flex: 2, child: Text(productName)),
+                                    Expanded(flex: 2, child: Text(description)),
+                                    Expanded(child: Text(productQuantity.toString())),
+                                    Expanded(child: Text(sellingPrice.toString())),
+                                    Expanded(child: Text(unitCost.toString())),
+                                    Expanded(flex: 2, child: Text(category)),
+                                    Expanded(flex: 2, child: Text(supplier)),
+                                    Expanded(child: Text(priceLevel1.toString())),
+                                    Expanded(child: Text(priceLevel2.toString())),                                    
+                                  ],
+                                ),
+                                trailing: Wrap(
+                                  children: <Widget>[
+                                    IconButton(onPressed: (){
+                                      // action(docID);
+                                    }, icon: Icon(Icons.edit, color: Colors.green)),
+                                    IconButton(onPressed: (){
+                                      firestoreService.deleteProduct(docID);
+                                    }, icon: Icon(Icons.delete, color: Colors.red))
+                                  ],
+                                ),
+                                leading: Container(
+                                  margin: EdgeInsets.only(right: 20),
+                                  width: 50,
+                                  height: 50,
+                                  child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
+                                ),
+                              );
+                            } 
+
+                            //DISPLAY SEARCH 
+                            if ((data['name'].toString().startsWith(search) && data['category'].toString().startsWith(category)) || (name == 'ALL ITEMS' && data['name'].toString().startsWith(search) || name == 'ALL ITEMS' && data['category'].toString().startsWith(search))) {
+                              return ListTile(
+                                title: Row(
+                                  children: [
+                                    Expanded(flex: 2, child: Text(productName)),
+                                    Expanded(flex: 2, child: Text(description)),
+                                    Expanded(child: Text(productQuantity.toString())),
+                                    Expanded(child: Text(sellingPrice.toString())),
+                                    Expanded(child: Text(unitCost.toString())),
+                                    Expanded(flex: 2, child: Text(category)),
+                                    Expanded(flex: 2, child: Text(supplier)),
+                                    Expanded(child: Text(priceLevel1.toString())),
+                                    Expanded(child: Text(priceLevel2.toString())), 
+                                  ],
+                                ),
+                                trailing: Wrap(
+                                  children: <Widget>[
+                                    IconButton(onPressed: (){
+                                      pname.text = productName;
+                                      pcat.text = category;
+                                      psellingprice.text = sellingPrice.toString();
+                                      pquan.text = productQuantity.toString();
+                                      // action(docID);
+                                    }, icon: Icon(Icons.edit, color: Colors.green)),
+                                    IconButton(onPressed: (){
+                                      firestoreService.deleteProduct(docID);
+                                    }, icon: Icon(Icons.delete, color: Colors.red))
+                                  ],
+                                ),
+                                leading: Container(
+                                  margin: EdgeInsets.only(right: 20),
+                                  width: 50,
+                                  height: 50,
+                                  child: data.containsKey('imageURL') ? Image.network(productImage) : Container(),
+                                ),
+                              );
+                            }
+                            return Container();
+                            } else {
+                              // Handle case where data is null, depending on your application logic.
+                            }             
+
+                            //DEFAULT DISPLAY
+                                      
                         },
                       );
                     }

@@ -20,14 +20,19 @@ class _POSState extends State<POS> {
 
   String name = '', imageURL = '';
   bool nameOrCat = true, descTOF = true;
-  int quantityCounter = 1;
+  int quantityCounter = 1, qtt = 0;
   double totalPriceQuantity = 0, totalAmount = 0;
 
-  List<List<dynamic>> cartItem = [];
+  // List<List<dynamic>> cartItem = [];
+  List cartProductNames = [];
+  List cartProductQuantity = [];
+  List cartProductPrice = [];
+  List cartProductID = [];
+  List cartProductQuantityData = [];
 
   void printcart() {
-    for (int j = 0; j < cartItem.length; j++) {
-      print(cartItem[j]);
+    for (int j = 0; j < cartProductNames.length; j++) {
+      print(cartProductNames[j]);
     
   }
   }
@@ -49,6 +54,7 @@ class _POSState extends State<POS> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
+        title: Text('MONTICASA DRUGSTORE'),
       ),
       body: Center(
         child: Row(
@@ -61,7 +67,7 @@ class _POSState extends State<POS> {
                   children: [
                     Expanded(
                       child: Container(
-                        color: Colors.blue[300],
+                        color: Colors.green[300],
                         child: Row(
                           children: [
                             Expanded(
@@ -93,7 +99,7 @@ class _POSState extends State<POS> {
                     Expanded(
                       flex: 5,
                       child: Container(
-                        color: Colors.white,
+                        color: Colors.green[200],
                         child: StreamBuilder(
                           stream: firestoreService.getProductStream(nameOrCat, descTOF), 
                           builder: (context, snapshot) {
@@ -117,8 +123,7 @@ class _POSState extends State<POS> {
 
                                   if (name.isEmpty) {
                                     return Container(
-                                      color: Colors.green[200],
-                                      padding: EdgeInsets.only(top: 5, left: 5, right: 5),
+                                      color: Colors.blue[200],
                                       margin: EdgeInsets.all(8),
                                       child: InkWell(
                                         onTap: (){
@@ -172,10 +177,20 @@ class _POSState extends State<POS> {
                                                         ),
                                                         ElevatedButton(
                                                           onPressed: (){ 
-                                                            cartItem.add([productName, quantityCounter, double.parse(totalPriceQuantity.toStringAsFixed(2))]);
+                                                            // cartItem.add([productName, quantityCounter, double.parse(totalPriceQuantity.toStringAsFixed(2))]);
                                                             // firestoreService.add2Cart(productName, quantityCounter, double.parse(totalPriceQuantity.toStringAsFixed(2)));
+
+                                                            cartProductID.add(docID);
+                                                            cartProductNames.add(productName);
+                                                            cartProductQuantity.add(quantityCounter);
+                                                            cartProductPrice.add(double.parse(totalPriceQuantity.toStringAsFixed(2)));
+                                                            cartProductQuantityData.add(int.parse(productQuantity));
+
+
+
                                                             countAmount();
                                                             print(totalAmount);
+                                                            print(cartProductID);
                                                             Navigator.pop(context);
                                                           }, 
                                                           style: ElevatedButton.styleFrom(
@@ -241,14 +256,7 @@ class _POSState extends State<POS> {
                                 }
                               );
                             } else {
-                              return Expanded(
-                                child: Container(
-                                  width: double.infinity,
-                                  alignment: Alignment.center,
-                                  // color: Colors.white,
-                                  child: Text('No product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40))
-                                ),
-                              );
+                              return Text('No product');
                             }
                           }
                         ),
@@ -271,8 +279,36 @@ class _POSState extends State<POS> {
                     Expanded(
                       flex: 8,
                       child: Container(
-
-                        child: Text(''),
+                        child: ListView.builder(
+                          itemCount: cartProductNames.length,
+                          itemBuilder: (context, index) {
+                            return Container(
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(bottom: 10),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                          child:
+                                              Padding(
+                                                padding: EdgeInsets.only(left: 10),
+                                                child: Text('${cartProductNames[index]}'))),
+                                      Expanded(
+                                          child: Text(
+                                              '${cartProductQuantity[index]}', textAlign: TextAlign.center,)),
+                                      Expanded(
+                                          child:
+                                              Text('${cartProductPrice[index]}'))
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // height: 50,
+                              // child: Text('${cartProductNames[index]} ${cartProductQuantity[index]} ${cartProductPrice[index]}'),
+                            );
+                          },
+                        ),
 
 
                         // child: StreamBuilder<QuerySnapshot>(
@@ -332,8 +368,23 @@ class _POSState extends State<POS> {
                     Container(
                       padding: EdgeInsets.only(bottom: 25),
                       height: 70,
-                      width: 150,
-                      child: ElevatedButton(onPressed: (){printcart();}, child: Text('CHECK OUT')),
+                      width: 100,
+                      child: ElevatedButton(onPressed: (){
+
+                        for (var i = 0; i < cartProductNames.length; i++) {
+                          int qtt = cartProductQuantityData[i] - cartProductQuantity[i];
+                          firestoreService.quantityDeduction(cartProductID[i], qtt.toString());
+                        }
+                        setState(() {
+                          cartProductID.clear();
+                          cartProductNames.clear();
+                          cartProductPrice.clear();
+                          cartProductQuantity.clear();
+                          cartProductQuantityData.clear();
+                        });
+                        
+                        
+                      }, child: Text('CHECK OUT')),
                     ),
                   ],
                 ),
